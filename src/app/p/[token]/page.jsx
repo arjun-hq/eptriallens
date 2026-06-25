@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Logo from '@/components/Logo';
 import translations from '@/lib/translations';
@@ -13,6 +13,7 @@ export default function PatientPage() {
     const [quizPassed, setQuizPassed] = useState(false);
     const [lang, setLang] = useState('en');
     const [a11y, setA11y] = useState({ fontSize: 0, highContrast: false, dyslexiaFont: false, reducedMotion: false });
+    const [currentStep, setCurrentStep] = useState(0);
 
     const t = translations[lang];
 
@@ -23,6 +24,41 @@ export default function PatientPage() {
             .catch((e) => { setError(e.message); setLoading(false); });
     }, [token]);
 
+    // Build dynamic steps based on available data
+    const steps = useMemo(() => {
+        if (!data) return [];
+        const s = [];
+        s.push({ id: 'welcome', icon: '👋', label: t.stepWelcome });
+
+        if (data.video) {
+            s.push({ id: 'video', icon: '🎬', label: t.stepVideo });
+        }
+
+        const summaryKeys = ['why', 'what', 'risks', 'timeline', 'next'];
+        const hasSummary = summaryKeys.some(k => data.summary?.[k]);
+        if (hasSummary) {
+            s.push({ id: 'summary', icon: '📋', label: t.stepKeyPoints });
+        }
+
+        // Always show questions step (chat is always available)
+        s.push({ id: 'questions', icon: '❓', label: t.stepQuestions });
+
+        const hasDocuments = data.trialDocument || (data.documents && data.documents.length > 0);
+        if (hasDocuments) {
+            s.push({ id: 'documents', icon: '📄', label: t.stepDocuments });
+        }
+
+        if (data.quizQuestions && data.quizQuestions.length > 0) {
+            s.push({ id: 'quiz', icon: '✅', label: t.stepQuiz });
+        }
+
+        if (!data.hasConsented) {
+            s.push({ id: 'consent', icon: '✍️', label: t.stepConsent });
+        }
+
+        return s;
+    }, [data, t]);
+
     const wrapperClasses = [
         a11y.fontSize === 1 ? 'a11y-large-text-1' : '',
         a11y.fontSize === 2 ? 'a11y-large-text-2' : '',
@@ -31,61 +67,172 @@ export default function PatientPage() {
         a11y.reducedMotion ? 'a11y-reduced-motion' : '',
     ].filter(Boolean).join(' ');
 
-    if (loading) return <div style={page.loading}><Logo size="lg" /><p style={{ marginTop: 16, color: 'var(--color-muted)' }}>{t.loading}</p></div>;
-    if (error || !data) return <div style={page.loading}><Logo size="lg" /><h2 style={{ marginTop: 16 }}>{t.errorTitle}</h2><p style={{ color: 'var(--color-muted)' }}>{t.errorBody}</p></div>;
+    function goNext() {
+        if (currentStep < steps.length - 1) {
+            setCurrentStep(currentStep + 1);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }
+
+    function goBack() {
+        if (currentStep > 0) {
+            setCurrentStep(currentStep - 1);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }
+
+    if (loading) return <div style={pageStyles.loading}><Logo size="lg" /><p style={{ marginTop: 16, color: 'var(--color-muted)' }}>{t.loading}</p></div>;
+    if (error || !data) return <div style={pageStyles.loading}><Logo size="lg" /><h2 style={{ marginTop: 16 }}>{t.errorTitle}</h2><p style={{ color: 'var(--color-muted)' }}>{t.errorBody}</p></div>;
+
+    // If already consented, show a simple confirmation page
+    if (data.hasConsented) {
+        return (
+            <div className={`step-wizard ${wrapperClasses}`} lang={lang}>
+                <meta name="robots" content="noindex, nofollow" />
+                <header style={pageStyles.header}>
+                    <Logo size="sm" />
+                    <span style={pageStyles.projectName}>{data.project.name}</span>
+                    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <LanguageSelector lang={lang} setLang={setLang} t={t} />
+                        <AccessibilityToolbar a11y={a11y} setA11y={setA11y} t={t} />
+                    </div>
+                </header>
+                <main className="step-wizard-main">
+                    <section className="card" style={{ textAlign: 'center', borderColor: 'var(--color-success)', borderWidth: 2, marginTop: 'var(--space-8)' }}>
+                        <div style={{ fontSize: '3rem', marginBottom: 8 }}>✅</div>
+                        <h3 style={{ color: 'var(--color-success)' }}>{t.consentAlreadyTitle}</h3>
+                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>{t.consentAlreadyBody}</p>
+                    </section>
+                </main>
+            </div>
+        );
+    }
+
+    const currentStepId = steps[currentStep]?.id;
+    const progressPercent = ((currentStep) / (steps.length - 1)) * 100;
+
+    // Determine the next button label based on the current step
+    function getNextLabel() {
+        switch (currentStepId) {
+            case 'welcome': return t.stepGetStarted;
+            case 'video': return t.stepVideoWatched;
+            case 'summary': return t.stepUnderstood;
+            case 'questions': return t.stepReady;
+            case 'documents': return t.stepDocReviewed;
+            default: return t.stepNext;
+        }
+    }
+
+    // Determine if we show encouragement badge
+    function getEncouragement() {
+        const halfWay = Math.floor(steps.length / 2);
+        if (currentStep === halfWay) return t.stepGreatJob;
+        if (currentStep === steps.length - 2) return t.stepAlmostDone;
+        return null;
+    }
+
+    const encouragement = getEncouragement();
 
     return (
-        <div style={page.wrapper} className={wrapperClasses} lang={lang}>
+        <div className={`step-wizard ${wrapperClasses}`} lang={lang}>
             <meta name="robots" content="noindex, nofollow" />
 
             {/* Header */}
-            <header style={page.header}>
+            <header style={pageStyles.header}>
                 <Logo size="sm" />
-                <span style={page.projectName}>{data.project.name}</span>
+                <span style={pageStyles.projectName}>{data.project.name}</span>
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <LanguageSelector lang={lang} setLang={setLang} t={t} />
                     <AccessibilityToolbar a11y={a11y} setA11y={setA11y} t={t} />
                 </div>
             </header>
 
-            <main style={page.main}>
-                {/* Welcome card */}
-                <WelcomeCard data={data} t={t} />
+            {/* Progress bar (thin) */}
+            <div className="step-progress-bar">
+                <div className="step-progress-fill" style={{ width: `${progressPercent}%` }} />
+            </div>
 
-                {/* Video */}
-                <VideoSection video={data.video} t={t} />
+            {/* Progress Stepper */}
+            <ProgressStepper steps={steps} currentStep={currentStep} onStepClick={(i) => { if (i <= currentStep) setCurrentStep(i); }} />
 
-                {/* Summary (with per-point videos) */}
-                <SummarySection summary={data.summary} summaryVideos={data.summaryVideos} t={t} />
+            {/* Step counter text */}
+            <div style={{ textAlign: 'center', padding: 'var(--space-3) 0 0', fontSize: 'var(--text-sm)', color: 'var(--color-muted)', fontWeight: 600 }}>
+                {t.stepOf(currentStep + 1, steps.length)}
+            </div>
 
-                {/* Original trial information document */}
-                <TrialDocumentSection trialDocument={data.trialDocument} projectName={data.project.name} t={t} />
-
-                {/* FAQs */}
-                <FAQSection faqs={data.faqs} t={t} lang={lang} />
-
-                {/* Chat assistant */}
-                <ChatSection token={token} t={t} lang={lang} />
-
-                {/* Documents */}
-                <DocumentsSection documents={data.documents} t={t} />
-
-                {/* Comprehension quiz */}
-                <QuizSection questions={data.quizQuestions} onPass={() => setQuizPassed(true)} passed={quizPassed} t={t} lang={lang} />
-
-                {/* Consent */}
-                {!data.hasConsented && <ConsentSection token={token} data={data} quizPassed={quizPassed} t={t} />}
-                {data.hasConsented && (
-                    <section className="card" style={{ textAlign: 'center', borderColor: 'var(--color-success)', borderWidth: 2 }}>
-                        <div style={{ fontSize: '2rem', marginBottom: 8 }}>✅</div>
-                        <h3 style={{ color: 'var(--color-success)' }}>{t.consentAlreadyTitle}</h3>
-                        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>{t.consentAlreadyBody}</p>
-                    </section>
+            <main className="step-wizard-main">
+                {/* Encouragement badge */}
+                {encouragement && (
+                    <div style={{ textAlign: 'center' }}>
+                        <span className="step-encourage-badge">🌟 {encouragement}</span>
+                    </div>
                 )}
+
+                {/* Step content */}
+                <div className="step-container" key={currentStep}>
+                    {currentStepId === 'welcome' && (
+                        <WelcomeStep data={data} t={t} onGetStarted={goNext} />
+                    )}
+
+                    {currentStepId === 'video' && (
+                        <VideoStep video={data.video} t={t} />
+                    )}
+
+                    {currentStepId === 'summary' && (
+                        <SummaryStep summary={data.summary} summaryVideos={data.summaryVideos} t={t} />
+                    )}
+
+                    {currentStepId === 'questions' && (
+                        <QuestionsStep faqs={data.faqs} token={token} t={t} lang={lang} />
+                    )}
+
+                    {currentStepId === 'documents' && (
+                        <DocumentsStep
+                            trialDocument={data.trialDocument}
+                            documents={data.documents}
+                            projectName={data.project.name}
+                            t={t}
+                        />
+                    )}
+
+                    {currentStepId === 'quiz' && (
+                        <QuizStep
+                            questions={data.quizQuestions}
+                            onPass={() => setQuizPassed(true)}
+                            passed={quizPassed}
+                            t={t}
+                            lang={lang}
+                        />
+                    )}
+
+                    {currentStepId === 'consent' && (
+                        <ConsentStep
+                            token={token}
+                            data={data}
+                            quizPassed={quizPassed}
+                            t={t}
+                        />
+                    )}
+                </div>
             </main>
 
+            {/* Step Navigation (not shown on welcome — it has its own CTA) */}
+            {currentStepId !== 'welcome' && (
+                <div className="step-nav">
+                    <button className="step-nav-btn step-nav-btn-back" onClick={goBack}>
+                        ← {t.stepBack}
+                    </button>
+                    {/* Don't show Next on the last step (consent handles its own submission) */}
+                    {currentStep < steps.length - 1 && (
+                        <button className="step-nav-btn step-nav-btn-primary" onClick={goNext}>
+                            {getNextLabel()}
+                        </button>
+                    )}
+                </div>
+            )}
+
             {/* Footer */}
-            <footer style={page.footer}>
+            <footer style={pageStyles.footer}>
                 <div className="safety-banner" style={{ marginBottom: 16 }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                     <span>{t.footerDisclaimer}</span>
@@ -95,6 +242,32 @@ export default function PatientPage() {
                     {t.footerPrivacy} · © {new Date().getFullYear()} Trial Lens
                 </p>
             </footer>
+        </div>
+    );
+}
+
+/* ─── Progress Stepper ─── */
+function ProgressStepper({ steps, currentStep, onStepClick }) {
+    return (
+        <div className="progress-stepper">
+            {steps.map((step, i) => (
+                <div key={step.id} className="progress-stepper-step">
+                    {i > 0 && (
+                        <div className={`progress-stepper-line ${i <= currentStep ? 'completed' : ''}`} />
+                    )}
+                    <div
+                        className={`progress-stepper-circle ${i === currentStep ? 'active' : ''} ${i < currentStep ? 'completed' : ''}`}
+                        onClick={() => onStepClick(i)}
+                        style={{ cursor: i <= currentStep ? 'pointer' : 'default' }}
+                        title={step.label}
+                    >
+                        {i < currentStep ? '✓' : step.icon}
+                    </div>
+                    <span className={`progress-stepper-label ${i === currentStep ? 'active' : ''} ${i < currentStep ? 'completed' : ''}`}>
+                        {step.label}
+                    </span>
+                </div>
+            ))}
         </div>
     );
 }
@@ -192,28 +365,39 @@ function AccessibilityToolbar({ a11y, setA11y, t }) {
     );
 }
 
-/* ─── Welcome Card ─── */
-function WelcomeCard({ data, t }) {
+/* ─── Welcome Step ─── */
+function WelcomeStep({ data, t, onGetStarted }) {
     return (
-        <section className="card" style={{ background: 'linear-gradient(135deg, rgba(0,180,216,0.05) 0%, rgba(72,202,228,0.05) 100%)', borderColor: 'rgba(0,180,216,0.2)' }}>
-            <h2 style={{ fontSize: 'var(--text-2xl)', marginBottom: 8 }}>
-                {t.welcomeGreeting}{data.firstName ? `, ${data.firstName}` : ''} 👋
+        <div className="welcome-step">
+            <div className="welcome-wave">👋</div>
+            <h2 className="welcome-title">
+                {t.welcomeGreeting}{data.firstName ? `, ${data.firstName}` : ''}!
             </h2>
-            <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', lineHeight: 'var(--leading-relaxed)' }}>
-                {t.welcomeBody(data.project.name)}
+            <p className="welcome-subtitle">
+                {t.welcomeBodyShort(data.project.name)}
             </p>
-        </section>
+            <p className="welcome-encourage">
+                {t.welcomeEncouragement}
+            </p>
+            <button className="welcome-cta" onClick={onGetStarted}>
+                {t.stepGetStarted} →
+            </button>
+        </div>
     );
 }
 
-/* ─── Video Section ─── */
-function VideoSection({ video, t }) {
+/* ─── Video Step ─── */
+function VideoStep({ video, t }) {
     if (!video) return null;
 
     return (
-        <section>
-            <h3 style={sec.heading}>{t.videoHeading}</h3>
-            <div style={sec.videoContainer}>
+        <div>
+            <div className="step-intro">
+                <div className="step-intro-icon">🎬</div>
+                <h3 className="step-intro-title">{t.videoHeading}</h3>
+                <p className="step-intro-subtitle">Watch this short video to learn about the study</p>
+            </div>
+            <div style={secStyles.videoContainer}>
                 {video.sourceType === 'EXTERNAL_URL' && video.url ? (
                     <iframe
                         src={video.url}
@@ -235,8 +419,8 @@ function VideoSection({ video, t }) {
                     </video>
                 )}
             </div>
-            {video.title && <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', marginTop: 8 }}>{video.title}</p>}
-        </section>
+            {video.title && <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', marginTop: 12, textAlign: 'center' }}>{video.title}</p>}
+        </div>
     );
 }
 
@@ -261,7 +445,7 @@ function SummaryVideoCard({ video, sectionKey, t }) {
                 background: gradients[sectionKey] || gradients.why,
                 borderRadius: 'var(--radius-md)',
                 padding: playing ? '0' : '16px 20px',
-                marginBottom: '12px',
+                marginTop: '16px',
                 display: 'flex',
                 flexDirection: playing ? 'column' : 'row',
                 alignItems: playing ? 'stretch' : 'center',
@@ -309,8 +493,8 @@ function SummaryVideoCard({ video, sectionKey, t }) {
     );
 }
 
-/* ─── Summary Section ─── */
-function SummarySection({ summary, summaryVideos, t }) {
+/* ─── Summary Step (Card Carousel) ─── */
+function SummaryStep({ summary, summaryVideos, t }) {
     const summaryLabelMap = { why: t.summaryWhy, what: t.summaryWhat, risks: t.summaryRisks, timeline: t.summaryTimeline, next: t.summaryNext };
     const sectionConfig = [
         { key: 'why', icon: '🔬' },
@@ -320,176 +504,134 @@ function SummarySection({ summary, summaryVideos, t }) {
         { key: 'next', icon: '➡️' },
     ];
 
-    const [openSections, setOpenSections] = useState({});
+    const availableSections = sectionConfig.filter(s => summary[s.key]);
+    const [cardIndex, setCardIndex] = useState(0);
 
-    function toggle(key) {
-        setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
-    }
+    if (availableSections.length === 0) return null;
 
-    const hasSummary = sectionConfig.some(s => summary[s.key]);
-    if (!hasSummary) return null;
+    const current = availableSections[cardIndex];
+    const video = summaryVideos?.[current.key];
 
     return (
-        <section>
-            <h3 style={sec.heading}>{t.summaryHeading}</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {sectionConfig.map(({ key, icon }) => {
-                    if (!summary[key]) return null;
-                    const isOpen = openSections[key];
-                    const video = summaryVideos?.[key];
-                    return (
-                        <div key={key} className="accordion-item">
-                            <button
-                                className="accordion-trigger"
-                                aria-expanded={isOpen}
-                                onClick={() => toggle(key)}
-                            >
-                                <span>{icon} {summaryLabelMap[key]}</span>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    {video && <span style={{ fontSize: '0.65rem', background: 'rgba(0,180,216,0.1)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: 10, fontWeight: 600 }}>🎬 {t.summaryVideo}</span>}
-                                    <span className="chevron" style={{ fontSize: '0.8rem' }}>{isOpen ? '▲' : '▼'}</span>
-                                </span>
-                            </button>
-                            {isOpen && (
-                                <div className="accordion-content">
-                                    <SummaryVideoCard video={video} sectionKey={key} t={t} />
-                                    <div style={{ whiteSpace: 'pre-line' }}>{summary[key]}</div>
-                                </div>
-                            )}
-                        </div>
-                    );
-                })}
+        <div>
+            <div className="step-intro">
+                <div className="step-intro-icon">📋</div>
+                <h3 className="step-intro-title">{t.summaryHeading}</h3>
+                <p className="step-intro-subtitle">
+                    {t.summaryCardOf(cardIndex + 1, availableSections.length)}
+                </p>
             </div>
-        </section>
-    );
-}
 
-/* ─── Trial Document Section ─── */
-function TrialDocumentSection({ trialDocument, projectName, t }) {
-    const [isExpanded, setIsExpanded] = useState(false);
+            <div className="summary-carousel">
+                <div className="summary-carousel-card" key={current.key}>
+                    <div className="summary-carousel-icon">{current.icon}</div>
+                    <h4 className="summary-carousel-title">{summaryLabelMap[current.key]}</h4>
+                    <p className="summary-carousel-text">{summary[current.key]}</p>
+                    <SummaryVideoCard video={video} sectionKey={current.key} t={t} />
+                </div>
 
-    if (!trialDocument) return null;
+                <div className="summary-carousel-nav">
+                    <button
+                        className="summary-carousel-btn"
+                        onClick={() => setCardIndex(Math.max(0, cardIndex - 1))}
+                        disabled={cardIndex === 0}
+                    >
+                        {t.summaryPrev}
+                    </button>
 
-    return (
-        <section>
-            <h3 style={sec.heading}>{t.trialDocHeading}</h3>
-            <div className="card">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-                    <div style={{ flex: 1, minWidth: 200 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                            <div style={{
-                                width: 40,
-                                height: 40,
-                                borderRadius: 'var(--radius-md)',
-                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: '#fff',
-                                fontSize: '18px',
-                                flexShrink: 0,
-                            }}>📄</div>
-                            <div>
-                                <h4 style={{ fontSize: 'var(--text-base)' }}>{projectName}</h4>
-                                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: 2 }}>{t.trialDocSubtitle}</p>
-                            </div>
-                        </div>
+                    <div className="summary-carousel-dots">
+                        {availableSections.map((_, i) => (
+                            <button
+                                key={i}
+                                className={`summary-carousel-dot ${i === cardIndex ? 'active' : ''}`}
+                                onClick={() => setCardIndex(i)}
+                                aria-label={`Go to point ${i + 1}`}
+                            />
+                        ))}
                     </div>
-                    <button className="btn btn-ghost btn-sm" onClick={() => setIsExpanded(!isExpanded)} style={{ flexShrink: 0 }}>
-                        {isExpanded ? t.trialDocCollapse : t.trialDocView}
+
+                    <button
+                        className="summary-carousel-btn"
+                        onClick={() => setCardIndex(Math.min(availableSections.length - 1, cardIndex + 1))}
+                        disabled={cardIndex === availableSections.length - 1}
+                    >
+                        {t.summaryNextCard}
                     </button>
                 </div>
-
-                {isExpanded && (
-                    <iframe
-                        src={trialDocument}
-                        style={{
-                            width: '100%',
-                            height: '600px',
-                            border: '1px solid var(--color-border)',
-                            borderRadius: 'var(--radius-md)',
-                            background: '#fff',
-                            marginTop: 16,
-                        }}
-                        title="Trial Information Document"
-                    />
-                )}
-
-                <div style={{ display: 'flex', gap: 8, marginTop: isExpanded ? 12 : 16, flexWrap: 'wrap' }}>
-                    <a
-                        href={trialDocument}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn btn-ghost btn-sm"
-                    >
-                        {t.trialDocOpenTab}
-                    </a>
-                    <a
-                        href={trialDocument}
-                        download
-                        className="btn btn-ghost btn-sm"
-                    >
-                        {t.trialDocDownload}
-                    </a>
-                </div>
             </div>
-        </section>
+        </div>
     );
 }
 
-/* ─── FAQ Section ─── */
-function FAQSection({ faqs, t, lang }) {
-    const [search, setSearch] = useState('');
+/* ─── Questions Step (FAQ Tiles + Chat) ─── */
+function QuestionsStep({ faqs, token, t, lang }) {
+    return (
+        <div>
+            <div className="step-intro">
+                <div className="step-intro-icon">❓</div>
+                <h3 className="step-intro-title">{t.faqHeading}</h3>
+            </div>
+
+            {/* FAQ Tiles */}
+            {faqs && faqs.length > 0 && (
+                <FAQTiles faqs={faqs} t={t} lang={lang} />
+            )}
+
+            {/* Chat Section */}
+            <div style={{ marginTop: 'var(--space-8)' }}>
+                <h4 style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-primary)', marginBottom: 'var(--space-4)', textAlign: 'center' }}>
+                    {t.chatHeading}
+                </h4>
+                <ChatSection token={token} t={t} lang={lang} />
+            </div>
+        </div>
+    );
+}
+
+/* ─── FAQ Tiles ─── */
+function FAQTiles({ faqs, t, lang }) {
     const [openFaq, setOpenFaq] = useState(null);
+    const [showAll, setShowAll] = useState(false);
 
-    if (!faqs || faqs.length === 0) return null;
-
-    const filtered = search
-        ? faqs.filter(f => {
-              const qStr = f.question[lang] || f.question.en || f.question;
-              const aStr = f.answer[lang] || f.answer.en || f.answer;
-              return qStr.toLowerCase().includes(search.toLowerCase()) || 
-                     aStr.toLowerCase().includes(search.toLowerCase());
-          })
-        : faqs;
+    const displayFaqs = showAll ? faqs : faqs.slice(0, 5);
 
     return (
-        <section>
-            <h3 style={sec.heading}>{t.faqHeading}</h3>
-            <input
-                className="form-input"
-                placeholder={t.faqSearchPlaceholder}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ marginBottom: 12 }}
-            />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {filtered.map((faq) => {
+        <div>
+            <div className="faq-tiles">
+                {displayFaqs.map((faq) => {
                     const qStr = faq.question[lang] || faq.question.en || faq.question;
                     const aStr = faq.answer[lang] || faq.answer.en || faq.answer;
+                    const isOpen = openFaq === faq.id;
+
                     return (
-                        <div key={faq.id} className="accordion-item">
-                            <button
-                                className="accordion-trigger"
-                                aria-expanded={openFaq === faq.id}
-                                onClick={() => setOpenFaq(openFaq === faq.id ? null : faq.id)}
-                            >
-                                <span>{qStr}</span>
-                                <span className="chevron" style={{ fontSize: '0.8rem' }}>{openFaq === faq.id ? '▲' : '▼'}</span>
-                            </button>
-                            {openFaq === faq.id && (
-                                <div className="accordion-content">{aStr}</div>
-                            )}
-                        </div>
+                        <button
+                            key={faq.id}
+                            className={`faq-tile ${isOpen ? 'open' : ''}`}
+                            onClick={() => setOpenFaq(isOpen ? null : faq.id)}
+                        >
+                            <span className="faq-tile-icon">💬</span>
+                            <div className="faq-tile-content">
+                                <div>{qStr}</div>
+                                {isOpen && (
+                                    <div className="faq-tile-answer">{aStr}</div>
+                                )}
+                            </div>
+                            <span className="faq-tile-chevron">{isOpen ? '▲' : '▼'}</span>
+                        </button>
                     );
                 })}
-                {filtered.length === 0 && (
-                    <p style={{ textAlign: 'center', color: 'var(--color-muted)', padding: 16, fontSize: 'var(--text-sm)' }}>
-                        {t.faqNoResults}
-                    </p>
-                )}
             </div>
-        </section>
+            {!showAll && faqs.length > 5 && (
+                <div style={{ textAlign: 'center', marginTop: 'var(--space-4)' }}>
+                    <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => setShowAll(true)}
+                    >
+                        Show all {faqs.length} questions
+                    </button>
+                </div>
+            )}
+        </div>
     );
 }
 
@@ -623,8 +765,7 @@ function ChatSection({ token, t, lang }) {
         if (isListening) {
             recognitionRef.current?.stop();
         } else {
-            if (window.speechSynthesis) window.speechSynthesis.cancel(); // Stop talking if we are listening
-            setIsSpeaking(false);
+            if (window.speechSynthesis) window.speechSynthesis.cancel();
             setInput('');
             try {
                 recognitionRef.current?.start();
@@ -688,8 +829,6 @@ function ChatSection({ token, t, lang }) {
 
     return (
         <section>
-            <h3 style={sec.heading}>{t.chatHeading}</h3>
-
             <div className="safety-banner" style={{ marginBottom: 12 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                 {t.chatDisclaimer}
@@ -905,58 +1044,132 @@ function ChatSection({ token, t, lang }) {
     );
 }
 
-/* ─── Documents Section ─── */
-function DocumentsSection({ documents, t }) {
-    if (!documents || documents.length === 0) return null;
+/* ─── Documents Step ─── */
+function DocumentsStep({ trialDocument, documents, projectName, t }) {
+    const [docExpanded, setDocExpanded] = useState(false);
 
-    const piSheet = documents.find(d => d.type === 'PI_SHEET');
-    const contract = documents.find(d => d.type === 'PATIENT_CONTRACT');
+    const piSheet = documents?.find(d => d.type === 'PI_SHEET');
+    const contract = documents?.find(d => d.type === 'PATIENT_CONTRACT');
 
     return (
-        <section>
-            <h3 style={sec.heading}>{t.documentsHeading}</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div>
+            <div className="step-intro">
+                <div className="step-intro-icon">📄</div>
+                <h3 className="step-intro-title">{t.documentsHeading}</h3>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {/* Trial document */}
+                {trialDocument && (
+                    <div className="card">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                            <div style={{
+                                width: 48,
+                                height: 48,
+                                borderRadius: 'var(--radius-md)',
+                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#fff',
+                                fontSize: '22px',
+                                flexShrink: 0,
+                            }}>📄</div>
+                            <div>
+                                <h4 style={{ fontSize: 'var(--text-base)' }}>{projectName}</h4>
+                                <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-muted)', marginTop: 2 }}>{t.trialDocSubtitle}</p>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <button className="btn btn-ghost btn-sm" onClick={() => setDocExpanded(!docExpanded)}>
+                                {docExpanded ? t.trialDocCollapse : t.trialDocView}
+                            </button>
+                            <a href={trialDocument} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm">
+                                {t.trialDocOpenTab}
+                            </a>
+                            <a href={trialDocument} download className="btn btn-ghost btn-sm">
+                                {t.trialDocDownload}
+                            </a>
+                        </div>
+                        {docExpanded && (
+                            <iframe
+                                src={trialDocument}
+                                style={{
+                                    width: '100%',
+                                    height: '500px',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: 'var(--radius-md)',
+                                    background: '#fff',
+                                    marginTop: 16,
+                                }}
+                                title="Trial Information Document"
+                            />
+                        )}
+                    </div>
+                )}
+
+                {/* PI Sheet */}
                 {piSheet && (
                     <div className="card">
-                        <h4 style={{ fontSize: 'var(--text-base)', marginBottom: 8 }}>{t.docPISheet}</h4>
-                        <iframe
-                            src={`/api/uploads/${piSheet.filepath.replace('/uploads/', '')}`}
-                            style={{ width: '100%', height: '400px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                            <div style={{
+                                width: 48,
+                                height: 48,
+                                borderRadius: 'var(--radius-md)',
+                                background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#fff',
+                                fontSize: '22px',
+                                flexShrink: 0,
+                            }}>📋</div>
+                            <h4 style={{ fontSize: 'var(--text-base)' }}>{t.docPISheet}</h4>
+                        </div>
                         <a
                             href={`/api/uploads/${piSheet.filepath.replace('/uploads/', '')}`}
                             download={piSheet.filename}
                             className="btn btn-ghost btn-sm"
-                            style={{ marginTop: 8 }}
                         >
                             {t.docDownload} {piSheet.filename}
                         </a>
                     </div>
                 )}
+
+                {/* Contract */}
                 {contract && (
                     <div className="card">
-                        <h4 style={{ fontSize: 'var(--text-base)', marginBottom: 8 }}>{t.docContract}</h4>
-                        <iframe
-                            src={`/api/uploads/${contract.filepath.replace('/uploads/', '')}`}
-                            style={{ width: '100%', height: '400px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                            <div style={{
+                                width: 48,
+                                height: 48,
+                                borderRadius: 'var(--radius-md)',
+                                background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#fff',
+                                fontSize: '22px',
+                                flexShrink: 0,
+                            }}>📝</div>
+                            <h4 style={{ fontSize: 'var(--text-base)' }}>{t.docContract}</h4>
+                        </div>
                         <a
                             href={`/api/uploads/${contract.filepath.replace('/uploads/', '')}`}
                             download={contract.filename}
                             className="btn btn-ghost btn-sm"
-                            style={{ marginTop: 8 }}
                         >
                             {t.docDownload} {contract.filename}
                         </a>
                     </div>
                 )}
             </div>
-        </section>
+        </div>
     );
 }
 
-/* ─── Quiz Section ─── */
-function QuizSection({ questions, onPass, passed, t, lang }) {
+/* ─── Quiz Step ─── */
+function QuizStep({ questions, onPass, passed, t, lang }) {
     const [answers, setAnswers] = useState({});
     const [submitted, setSubmitted] = useState(false);
     const [score, setScore] = useState(0);
@@ -994,7 +1207,7 @@ function QuizSection({ questions, onPass, passed, t, lang }) {
     if (passed) {
         return (
             <section className="card" style={{ textAlign: 'center', borderColor: 'var(--color-success)', borderWidth: 2 }}>
-                <div style={{ fontSize: '2rem', marginBottom: 8 }}>✅</div>
+                <div style={{ fontSize: '3rem', marginBottom: 8 }}>✅</div>
                 <h3 style={{ color: 'var(--color-success)' }}>{t.quizPassedTitle}</h3>
                 <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)' }}>
                     {t.quizPassedBody}
@@ -1004,8 +1217,13 @@ function QuizSection({ questions, onPass, passed, t, lang }) {
     }
 
     return (
-        <section>
-            <h3 style={sec.heading}>{t.quizHeading}</h3>
+        <div>
+            <div className="step-intro">
+                <div className="step-intro-icon">✅</div>
+                <h3 className="step-intro-title">{t.quizHeading}</h3>
+                <p className="step-intro-subtitle">{t.quizEncouragement}</p>
+            </div>
+
             <div className="card">
                 <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginBottom: 20, lineHeight: 'var(--leading-relaxed)' }}>
                     {t.quizIntro(passingScore, questions.length)}
@@ -1022,13 +1240,13 @@ function QuizSection({ questions, onPass, passed, t, lang }) {
                                 <p style={{ fontWeight: 600, fontSize: 'var(--text-sm)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <span style={{
                                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                        width: 24, height: 24, borderRadius: '50%',
+                                        width: 28, height: 28, borderRadius: '50%',
                                         background: submitted ? (isCorrect ? 'var(--color-success)' : isWrong ? '#ef4444' : 'var(--color-primary)') : 'var(--color-primary)',
-                                        color: '#fff', fontSize: '12px', fontWeight: 700, flexShrink: 0,
+                                        color: '#fff', fontSize: '13px', fontWeight: 700, flexShrink: 0,
                                     }}>{qi + 1}</span>
                                     {q.question[lang] || q.question.en || q.question}
                                 </p>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 32 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 36 }}>
                                     {(q.options[lang] || q.options.en || q.options).map((opt, oi) => {
                                         const isSelected = userAnswer === oi;
                                         const isCorrectOption = submitted && oi === q.correctIndex;
@@ -1050,7 +1268,7 @@ function QuizSection({ questions, onPass, passed, t, lang }) {
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     gap: 10,
-                                                    padding: '10px 14px',
+                                                    padding: '12px 16px',
                                                     borderRadius: 'var(--radius-md)',
                                                     border: `2px solid ${borderColor}`,
                                                     background: bgColor,
@@ -1061,13 +1279,14 @@ function QuizSection({ questions, onPass, passed, t, lang }) {
                                                     transition: 'all 0.2s',
                                                     width: '100%',
                                                     fontFamily: 'inherit',
+                                                    minHeight: '48px',
                                                 }}
                                             >
                                                 <span style={{
-                                                    width: 22, height: 22, borderRadius: '50%',
+                                                    width: 24, height: 24, borderRadius: '50%',
                                                     border: `2px solid ${isSelected || isCorrectOption ? borderColor || 'var(--color-primary)' : 'var(--color-border)'}`,
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    fontSize: '11px', fontWeight: 700, flexShrink: 0,
+                                                    fontSize: '12px', fontWeight: 700, flexShrink: 0,
                                                     background: isSelected || isCorrectOption ? (isCorrectOption ? 'var(--color-success)' : isWrongSelection ? '#ef4444' : 'var(--color-primary)') : 'transparent',
                                                     color: isSelected || isCorrectOption ? '#fff' : 'var(--color-muted)',
                                                     transition: 'all 0.2s',
@@ -1086,7 +1305,7 @@ function QuizSection({ questions, onPass, passed, t, lang }) {
 
                 {!submitted ? (
                     <button
-                        className="btn btn-primary"
+                        className="btn btn-primary btn-lg"
                         onClick={handleSubmit}
                         disabled={!allAnswered}
                         style={{ marginTop: 24, width: '100%' }}
@@ -1125,12 +1344,12 @@ function QuizSection({ questions, onPass, passed, t, lang }) {
                     </p>
                 )}
             </div>
-        </section>
+        </div>
     );
 }
 
-/* ─── Consent Section ─── */
-function ConsentSection({ token, data, quizPassed, t }) {
+/* ─── Consent Step ─── */
+function ConsentStep({ token, data, quizPassed, t }) {
     const [readUnderstood, setReadUnderstood] = useState(false);
     const [acceptTerms, setAcceptTerms] = useState(false);
     const [signatureName, setSignatureName] = useState('');
@@ -1222,22 +1441,28 @@ function ConsentSection({ token, data, quizPassed, t }) {
 
     if (!quizPassed) {
         return (
-            <section>
-                <h3 style={sec.heading}>{t.consentHeading}</h3>
+            <div>
+                <div className="step-intro">
+                    <div className="step-intro-icon">✍️</div>
+                    <h3 className="step-intro-title">{t.consentHeading}</h3>
+                </div>
                 <div className="card" style={{ textAlign: 'center', padding: '32px 24px' }}>
-                    <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--color-bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px', fontSize: '24px' }}>🔒</div>
+                    <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '28px' }}>🔒</div>
                     <h4 style={{ marginBottom: 8 }}>{t.consentLocked}</h4>
                     <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-muted)', maxWidth: 400, margin: '0 auto', lineHeight: 'var(--leading-relaxed)' }}>
                         {t.consentLockedBody}
                     </p>
                 </div>
-            </section>
+            </div>
         );
     }
 
     return (
-        <section>
-            <h3 style={sec.heading}>{t.consentHeading}</h3>
+        <div>
+            <div className="step-intro">
+                <div className="step-intro-icon">✍️</div>
+                <h3 className="step-intro-title">{t.consentHeading}</h3>
+            </div>
             <form className="card" onSubmit={handleSubmit}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     <label className="form-checkbox">
@@ -1312,16 +1537,12 @@ function ConsentSection({ token, data, quizPassed, t }) {
                     </button>
                 </div>
             </form>
-        </section>
+        </div>
     );
 }
 
 /* ─── Page Styles ─── */
-const page = {
-    wrapper: {
-        minHeight: '100vh',
-        background: 'var(--color-bg)',
-    },
+const pageStyles = {
     loading: {
         display: 'flex',
         flexDirection: 'column',
@@ -1347,14 +1568,6 @@ const page = {
         fontWeight: 600,
         color: 'var(--color-primary)',
     },
-    main: {
-        maxWidth: '720px',
-        margin: '0 auto',
-        padding: 'var(--space-6)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 'var(--space-8)',
-    },
     footer: {
         maxWidth: '720px',
         margin: '0 auto',
@@ -1364,13 +1577,7 @@ const page = {
     },
 };
 
-const sec = {
-    heading: {
-        fontSize: 'var(--text-xl)',
-        fontWeight: 700,
-        color: 'var(--color-primary)',
-        marginBottom: 'var(--space-4)',
-    },
+const secStyles = {
     videoContainer: {
         width: '100%',
         aspectRatio: '16/9',
@@ -1487,4 +1694,3 @@ const docStyle = {
         gap: '2px',
     },
 };
-
