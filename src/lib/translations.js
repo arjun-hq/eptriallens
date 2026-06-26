@@ -65,6 +65,8 @@ const translations = {
     chatEscalationCancel: 'Cancel',
     chatEscalationSubmit: 'Submit question',
     chatEscalationSuccess: '✅ Your question has been submitted to the clinical team. They will respond as soon as possible.',
+    chatCtaText: 'Have more questions? Ask Dr. Lens anything about the study at any time.',
+    chatCtaBtn: '💬 Start Chatting',
 
     // Documents
     docPISheet: 'Participant Information Sheet',
@@ -198,6 +200,8 @@ const translations = {
     chatEscalationCancel: 'Cancelar',
     chatEscalationSubmit: 'Enviar pregunta',
     chatEscalationSuccess: '✅ Su pregunta ha sido enviada al equipo clínico. Le responderán lo antes posible.',
+    chatCtaText: '¿Tiene más preguntas? Pregunte al Dr. Lens sobre el estudio en cualquier momento.',
+    chatCtaBtn: '💬 Iniciar Chat',
 
     docPISheet: 'Hoja de Información al Participante',
     docContract: 'Contrato del Paciente',
@@ -325,6 +329,8 @@ const translations = {
     chatEscalationCancel: 'Annuler',
     chatEscalationSubmit: 'Soumettre la question',
     chatEscalationSuccess: '✅ Votre question a été soumise à l\'équipe clinique. Ils vous répondront dès que possible.',
+    chatCtaText: 'Vous avez d\'autres questions ? Demandez au Dr Lens à tout moment.',
+    chatCtaBtn: '💬 Démarrer le Chat',
 
     docPISheet: 'Fiche d\'Information du Participant',
     docContract: 'Contrat du Patient',

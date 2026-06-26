@@ -14,6 +14,7 @@ export default function PatientPage() {
     const [lang, setLang] = useState('en');
     const [a11y, setA11y] = useState({ fontSize: 0, highContrast: false, dyslexiaFont: false, reducedMotion: false });
     const [currentStep, setCurrentStep] = useState(0);
+    const [chatOpen, setChatOpen] = useState(false);
 
     const t = translations[lang];
 
@@ -183,7 +184,7 @@ export default function PatientPage() {
                     )}
 
                     {currentStepId === 'questions' && (
-                        <QuestionsStep faqs={data.faqs} token={token} t={t} lang={lang} />
+                        <QuestionsStep faqs={data.faqs} token={token} t={t} lang={lang} onOpenChat={() => setChatOpen(true)} />
                     )}
 
                     {currentStepId === 'documents' && (
@@ -242,6 +243,40 @@ export default function PatientPage() {
                     {t.footerPrivacy} · © {new Date().getFullYear()} Trial Lens
                 </p>
             </footer>
+
+            {/* Floating Chat Widget */}
+            <button
+                className="floating-chat-btn"
+                onClick={() => setChatOpen(!chatOpen)}
+                aria-label="Ask Dr. Lens"
+                title="Ask Dr. Lens"
+            >
+                <div className="floating-chat-avatar-wrap">
+                    <img src="/doctor-avatar.png" alt="Dr. Lens" className="floating-chat-avatar" />
+                    <div className="floating-chat-online-dot" />
+                </div>
+            </button>
+
+            <div className="floating-chat-panel" style={{ display: chatOpen ? 'flex' : 'none' }}>
+                <div className="floating-chat-header">
+                    <div className="floating-chat-header-avatar">
+                        <img src="/doctor-avatar.png" alt="" />
+                    </div>
+                    <div className="floating-chat-header-info">
+                        <div className="floating-chat-header-name">
+                            {t.chatDoctorName}
+                            <span style={{ ...docStyle.onlineDot, marginTop: 0, marginLeft: 6 }} />
+                        </div>
+                        <div className="floating-chat-header-status">{t.chatDoctorRole}</div>
+                    </div>
+                    <button className="floating-chat-close-btn" onClick={() => setChatOpen(false)} aria-label="Close Chat">
+                        ✕
+                    </button>
+                </div>
+                <div className="floating-chat-body">
+                    <ChatSection token={token} t={t} lang={lang} isFloating={true} />
+                </div>
+            </div>
         </div>
     );
 }
@@ -564,7 +599,7 @@ function SummaryStep({ summary, summaryVideos, t }) {
 }
 
 /* ─── Questions Step (FAQ Tiles + Chat) ─── */
-function QuestionsStep({ faqs, token, t, lang }) {
+function QuestionsStep({ faqs, token, t, lang, onOpenChat }) {
     return (
         <div>
             <div className="step-intro">
@@ -577,12 +612,16 @@ function QuestionsStep({ faqs, token, t, lang }) {
                 <FAQTiles faqs={faqs} t={t} lang={lang} />
             )}
 
-            {/* Chat Section */}
-            <div style={{ marginTop: 'var(--space-8)' }}>
-                <h4 style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-primary)', marginBottom: 'var(--space-4)', textAlign: 'center' }}>
-                    {t.chatHeading}
-                </h4>
-                <ChatSection token={token} t={t} lang={lang} />
+            {/* Chat CTA Card */}
+            <div className="chat-cta-card">
+                <div className="chat-cta-card-icon">💬</div>
+                <h4 className="chat-cta-card-title">{t.chatHeading}</h4>
+                <p className="chat-cta-card-text">
+                    {t.chatCtaText}
+                </p>
+                <button className="btn btn-primary" onClick={onOpenChat}>
+                    {t.chatCtaBtn}
+                </button>
             </div>
         </div>
     );
@@ -676,7 +715,7 @@ function TypingBubble({ text, onTypingChange }) {
 }
 
 /* ─── Chat Section ─── */
-function ChatSection({ token, t, lang }) {
+function ChatSection({ token, t, lang, isFloating = false }) {
     const [messages, setMessages] = useState([
         { role: 'assistant', content: t.chatGreeting, typed: true, spoken: true },
     ]);
@@ -837,22 +876,24 @@ function ChatSection({ token, t, lang }) {
             <div className="chat-container">
                 <div className="chat-messages" ref={chatContainerRef}>
                     {/* Doctor avatar header */}
-                    <div style={docStyle.chatDocArea}>
-                        <div className={doctorActive ? 'doc-img-talking' : 'doc-img-idle'} style={docStyle.docImgWrap}>
-                            <img
-                                src="/doctor-avatar.png"
-                                alt="Dr. Lens"
-                                style={docStyle.docImg}
-                            />
+                    {!isFloating && (
+                        <div style={docStyle.chatDocArea}>
+                            <div className={doctorActive ? 'doc-img-talking' : 'doc-img-idle'} style={docStyle.docImgWrap}>
+                                <img
+                                    src="/doctor-avatar.png"
+                                    alt="Dr. Lens"
+                                    style={docStyle.docImg}
+                                />
 
-                            <div style={docStyle.docShadow} className={doctorActive ? 'doc-shadow-talk' : 'doc-shadow-idle'} />
+                                <div style={docStyle.docShadow} className={doctorActive ? 'doc-shadow-talk' : 'doc-shadow-idle'} />
+                            </div>
+                            <div style={docStyle.nameTag}>
+                                {t.chatDoctorName}
+                                <span style={docStyle.nameTagSub}>{t.chatDoctorRole}</span>
+                                <span style={docStyle.onlineDot} />
+                            </div>
                         </div>
-                        <div style={docStyle.nameTag}>
-                            {t.chatDoctorName}
-                            <span style={docStyle.nameTagSub}>{t.chatDoctorRole}</span>
-                            <span style={docStyle.onlineDot} />
-                        </div>
-                    </div>
+                    )}
 
                     {messages.map((msg, i) => (
                         msg.role === 'user' ? (
