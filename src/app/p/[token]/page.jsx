@@ -283,7 +283,7 @@ export default function PatientPage() {
                         <div className="floating-chat-header-status">{t.chatDoctorRole}</div>
                     </div>
                     <button className="floating-chat-close-btn" onClick={() => setChatEnlarged(!chatEnlarged)} aria-label={chatEnlarged ? 'Shrink Chat' : 'Enlarge Chat'} title={chatEnlarged ? 'Shrink' : 'Enlarge'}>
-                        {chatEnlarged ? '⊡' : '⊞'}
+                        {chatEnlarged ? '↙' : '↗'}
                     </button>
                     <button className="floating-chat-close-btn" onClick={() => setChatOpen(false)} aria-label="Close Chat" title="Close">
                         ✕
