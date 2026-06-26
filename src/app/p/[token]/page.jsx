@@ -1116,6 +1116,23 @@ function DocumentsStep({ trialDocument, documents, projectName, t }) {
                 <h3 className="step-intro-title">{t.documentsHeading}</h3>
             </div>
 
+            {/* Transparency notice */}
+            <div style={{
+                display: 'flex',
+                gap: 12,
+                alignItems: 'flex-start',
+                background: 'rgba(0, 180, 216, 0.05)',
+                border: '1px solid rgba(0, 180, 216, 0.25)',
+                borderRadius: 'var(--radius-lg)',
+                padding: 'var(--space-4) var(--space-5)',
+                marginBottom: 'var(--space-5)',
+            }}>
+                <span style={{ fontSize: '1.25rem', flexShrink: 0, marginTop: 1 }}>🔍</span>
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', lineHeight: 'var(--leading-relaxed)', margin: 0 }}>
+                    {t.documentsTransparencyNote}
+                </p>
+            </div>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {/* Trial document */}
                 {trialDocument && (

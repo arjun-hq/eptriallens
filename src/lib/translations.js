@@ -24,6 +24,7 @@ const translations = {
     faqHeading: '❓ Frequently asked questions',
     chatHeading: '💬 Study assistant',
     documentsHeading: '📄 Study documents',
+    documentsTransparencyNote: 'In the interest of full transparency, the complete trial document is available below. You are welcome to read it in full at your own pace or download it to keep for your personal records. We encourage you to review it carefully before proceeding.',
     quizHeading: '🧠 Comprehension quiz',
     consentHeading: '✍️ Consent and agreement',
 
@@ -164,6 +165,7 @@ const translations = {
     faqHeading: '❓ Preguntas frecuentes',
     chatHeading: '💬 Asistente del estudio',
     documentsHeading: '📄 Documentos del estudio',
+    documentsTransparencyNote: 'En aras de la plena transparencia, el documento completo del ensayo está disponible a continuación. Puede leerlo íntegramente a su propio ritmo o descargarlo para conservarlo en sus registros personales. Le recomendamos que lo revise detenidamente antes de continuar.',
     quizHeading: '🧠 Cuestionario de comprensión',
     consentHeading: '✍️ Consentimiento y acuerdo',
 
@@ -294,6 +296,7 @@ const translations = {
     faqHeading: '❓ Questions fréquemment posées',
     chatHeading: '💬 Assistant de l\'étude',
     documentsHeading: '📄 Documents de l\'étude',
+    documentsTransparencyNote: 'Dans un souci de transparence totale, le document complet de l\'essai est disponible ci-dessous. Vous pouvez le lire en intégralité à votre rythme ou le télécharger pour le conserver dans vos dossiers personnels. Nous vous encourageons à le consulter attentivement avant de continuer.',
     quizHeading: '🧠 Questionnaire de compréhension',
     consentHeading: '✍️ Consentement et accord',
 
