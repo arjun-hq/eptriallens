@@ -68,6 +68,16 @@ export default function PatientPage() {
         a11y.reducedMotion ? 'a11y-reduced-motion' : '',
     ].filter(Boolean).join(' ');
 
+    // Auto-open chat when user enters the questions step (must be before early returns)
+    const currentStepIdForEffect = steps[currentStep]?.id;
+    useEffect(() => {
+        if (currentStepIdForEffect === 'questions') {
+            setChatOpen(true);
+        } else {
+            setChatOpen(false);
+        }
+    }, [currentStepIdForEffect]);
+
     function goNext() {
         if (currentStep < steps.length - 1) {
             setCurrentStep(currentStep + 1);
@@ -111,15 +121,6 @@ export default function PatientPage() {
 
     const currentStepId = steps[currentStep]?.id;
     const progressPercent = ((currentStep) / (steps.length - 1)) * 100;
-
-    // Auto-open chat when user enters the questions step
-    useEffect(() => {
-        if (currentStepId === 'questions') {
-            setChatOpen(true);
-        } else {
-            setChatOpen(false);
-        }
-    }, [currentStepId]);
 
     // Determine the next button label based on the current step
     function getNextLabel() {
