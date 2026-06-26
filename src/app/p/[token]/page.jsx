@@ -112,6 +112,15 @@ export default function PatientPage() {
     const currentStepId = steps[currentStep]?.id;
     const progressPercent = ((currentStep) / (steps.length - 1)) * 100;
 
+    // Auto-open chat when user enters the questions step
+    useEffect(() => {
+        if (currentStepId === 'questions') {
+            setChatOpen(true);
+        } else {
+            setChatOpen(false);
+        }
+    }, [currentStepId]);
+
     // Determine the next button label based on the current step
     function getNextLabel() {
         switch (currentStepId) {
@@ -244,7 +253,8 @@ export default function PatientPage() {
                 </p>
             </footer>
 
-            {/* Floating Chat Widget */}
+            {/* Floating Chat Widget — only on questions step */}
+            {currentStepId === 'questions' && (
             <button
                 className="floating-chat-btn"
                 onClick={() => setChatOpen(!chatOpen)}
@@ -256,8 +266,9 @@ export default function PatientPage() {
                     <div className="floating-chat-online-dot" />
                 </div>
             </button>
+            )}
 
-            <div className="floating-chat-panel" style={{ display: chatOpen ? 'flex' : 'none' }}>
+            {currentStepId === 'questions' && <div className="floating-chat-panel" style={{ display: chatOpen ? 'flex' : 'none' }}>
                 <div className="floating-chat-header">
                     <div className="floating-chat-header-avatar">
                         <img src="/doctor-avatar.png" alt="" />
@@ -276,7 +287,7 @@ export default function PatientPage() {
                 <div className="floating-chat-body">
                     <ChatSection token={token} t={t} lang={lang} isFloating={true} />
                 </div>
-            </div>
+            </div>}
         </div>
     );
 }
@@ -716,18 +727,19 @@ function TypingBubble({ text, onTypingChange }) {
 
 /* ─── Chat Section ─── */
 function ChatSection({ token, t, lang, isFloating = false }) {
+    const greeting = isFloating ? t.chatFloatingGreeting : t.chatGreeting;
     const [messages, setMessages] = useState([
-        { role: 'assistant', content: t.chatGreeting, typed: true, spoken: true },
+        { role: 'assistant', content: greeting, typed: true, spoken: true },
     ]);
 
     useEffect(() => {
         setMessages(prev => {
             if (prev.length === 1 && prev[0].role === 'assistant') {
-                return [{ ...prev[0], content: t.chatGreeting }];
+                return [{ ...prev[0], content: greeting }];
             }
             return prev;
         });
-    }, [t.chatGreeting]);
+    }, [greeting]);
     const [input, setInput] = useState('');
     const [sending, setSending] = useState(false);
     const [showEscalation, setShowEscalation] = useState(false);
