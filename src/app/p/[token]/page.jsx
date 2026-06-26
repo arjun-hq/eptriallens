@@ -15,6 +15,7 @@ export default function PatientPage() {
     const [a11y, setA11y] = useState({ fontSize: 0, highContrast: false, dyslexiaFont: false, reducedMotion: false });
     const [currentStep, setCurrentStep] = useState(0);
     const [chatOpen, setChatOpen] = useState(false);
+    const [chatEnlarged, setChatEnlarged] = useState(false);
 
     const t = translations[lang];
 
@@ -269,7 +270,7 @@ export default function PatientPage() {
             </button>
             )}
 
-            {currentStepId === 'questions' && <div className="floating-chat-panel" style={{ display: chatOpen ? 'flex' : 'none' }}>
+            {currentStepId === 'questions' && <div className={`floating-chat-panel${chatEnlarged ? ' floating-chat-panel--enlarged' : ''}`} style={{ display: chatOpen ? 'flex' : 'none' }}>
                 <div className="floating-chat-header">
                     <div className="floating-chat-header-avatar">
                         <img src="/doctor-avatar.png" alt="" />
@@ -281,7 +282,10 @@ export default function PatientPage() {
                         </div>
                         <div className="floating-chat-header-status">{t.chatDoctorRole}</div>
                     </div>
-                    <button className="floating-chat-close-btn" onClick={() => setChatOpen(false)} aria-label="Close Chat">
+                    <button className="floating-chat-close-btn" onClick={() => setChatEnlarged(!chatEnlarged)} aria-label={chatEnlarged ? 'Shrink Chat' : 'Enlarge Chat'} title={chatEnlarged ? 'Shrink' : 'Enlarge'}>
+                        {chatEnlarged ? '⊡' : '⊞'}
+                    </button>
+                    <button className="floating-chat-close-btn" onClick={() => setChatOpen(false)} aria-label="Close Chat" title="Close">
                         ✕
                     </button>
                 </div>
