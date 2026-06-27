@@ -1531,8 +1531,22 @@ tbody tr:hover {
 }
 
 .step-intro-icon {
-  font-size: 2.5rem;
-  margin-bottom: var(--space-3);
+  font-size: 2.2rem;
+  width: 78px;
+  height: 78px;
+  margin: 0 auto var(--space-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 32%, rgba(0, 180, 216, 0.16), rgba(0, 180, 216, 0.05));
+  box-shadow: 0 0 0 6px rgba(0, 180, 216, 0.06), inset 0 0 0 1.5px rgba(0, 180, 216, 0.2);
+  animation: iconFloat 3.6s ease-in-out infinite;
+}
+
+@keyframes iconFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
 }
 
 .step-intro-title {
@@ -1560,6 +1574,149 @@ tbody tr:hover {
   background: var(--gradient-accent);
   transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
   border-radius: 0 4px 4px 0;
+}
+
+/* ─── Section Colour Identity ─────────────────────────────
+   Each Key-Point section gets its own signature colour so
+   participants can recognise and remember it at a glance. */
+.summary-carousel-card {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Coloured accent bar along the top of each card */
+.summary-carousel-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: var(--gradient-accent);
+}
+
+.summary-carousel-card.tone-why::before    { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.summary-carousel-card.tone-what::before    { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+.summary-carousel-card.tone-risks::before   { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+.summary-carousel-card.tone-timeline::before{ background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+.summary-carousel-card.tone-next::before    { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+
+/* Icon halo coloured per section */
+.summary-carousel-icon {
+  width: 92px;
+  height: 92px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 2.6rem;
+  margin: 0 auto var(--space-4);
+  animation: iconPop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes iconPop {
+  from { transform: scale(0.5); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+.summary-carousel-icon.tone-why    { background: rgba(118, 75, 162, 0.12);  box-shadow: 0 0 0 6px rgba(118, 75, 162, 0.06); }
+.summary-carousel-icon.tone-what    { background: rgba(245, 87, 108, 0.12);  box-shadow: 0 0 0 6px rgba(245, 87, 108, 0.06); }
+.summary-carousel-icon.tone-risks   { background: rgba(0, 180, 216, 0.12);   box-shadow: 0 0 0 6px rgba(0, 180, 216, 0.06); }
+.summary-carousel-icon.tone-timeline{ background: rgba(16, 185, 129, 0.12);   box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.06); }
+.summary-carousel-icon.tone-next    { background: rgba(250, 112, 154, 0.14);  box-shadow: 0 0 0 6px rgba(250, 112, 154, 0.06); }
+
+/* Active dot picks up the section colour */
+.summary-carousel-dot.tone-why.active    { background: #764ba2; box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.2); }
+.summary-carousel-dot.tone-what.active    { background: #f5576c; box-shadow: 0 0 0 3px rgba(245, 87, 108, 0.2); }
+.summary-carousel-dot.tone-risks.active   { background: #00B4D8; box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.2); }
+.summary-carousel-dot.tone-timeline.active{ background: #10B981; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2); }
+.summary-carousel-dot.tone-next.active    { background: #fa709a; box-shadow: 0 0 0 3px rgba(250, 112, 154, 0.2); }
+
+/* ─── Colourful FAQ Tiles ─── */
+.faq-tile {
+  border-left-width: 4px;
+  position: relative;
+}
+
+.faq-tile-icon {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 1.1rem;
+}
+
+.faq-tone-teal     { border-left-color: #00B4D8; }
+.faq-tone-teal     .faq-tile-icon { background: rgba(0, 180, 216, 0.12); }
+.faq-tone-why      { border-left-color: #764ba2; }
+.faq-tone-why      .faq-tile-icon { background: rgba(118, 75, 162, 0.12); }
+.faq-tone-what     { border-left-color: #f5576c; }
+.faq-tone-what     .faq-tile-icon { background: rgba(245, 87, 108, 0.12); }
+.faq-tone-timeline { border-left-color: #10B981; }
+.faq-tone-timeline .faq-tile-icon { background: rgba(16, 185, 129, 0.12); }
+.faq-tone-next     { border-left-color: #fa709a; }
+.faq-tone-next     .faq-tile-icon { background: rgba(250, 112, 154, 0.14); }
+
+.faq-tile:hover {
+  transform: translateY(-2px) scale(1.005);
+}
+
+/* ─── Welcome Step decorative blobs ─── */
+.welcome-step {
+  position: relative;
+  overflow: hidden;
+}
+
+.welcome-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(8px);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+  animation: blobFloat 6s ease-in-out infinite;
+}
+
+.welcome-blob-1 {
+  width: 90px; height: 90px;
+  top: 8%; left: 10%;
+  background: radial-gradient(circle, rgba(0, 180, 216, 0.35), transparent 70%);
+}
+
+.welcome-blob-2 {
+  width: 120px; height: 120px;
+  top: 20%; right: 8%;
+  background: radial-gradient(circle, rgba(118, 75, 162, 0.28), transparent 70%);
+  animation-delay: 1.5s;
+}
+
+.welcome-blob-3 {
+  width: 70px; height: 70px;
+  bottom: 12%; left: 18%;
+  background: radial-gradient(circle, rgba(250, 112, 154, 0.28), transparent 70%);
+  animation-delay: 3s;
+}
+
+@keyframes blobFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(0, -18px) scale(1.08); }
+}
+
+.welcome-step > *:not(.welcome-blob) {
+  position: relative;
+  z-index: 1;
+}
+
+/* ─── Progress Stepper: lively active step ─── */
+.progress-stepper-circle.active {
+  animation: stepperPulse 2s ease-in-out infinite;
+}
+
+@keyframes stepperPulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(0, 180, 216, 0.15), var(--shadow-md); }
+  50% { box-shadow: 0 0 0 7px rgba(0, 180, 216, 0.1), var(--shadow-md); }
 }
 
 /* ─── Responsive: Wizard on mobile ─── */

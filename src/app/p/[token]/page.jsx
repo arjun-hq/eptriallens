@@ -420,6 +420,9 @@ function AccessibilityToolbar({ a11y, setA11y, t }) {
 function WelcomeStep({ data, t, onGetStarted }) {
     return (
         <div className="welcome-step">
+            <span className="welcome-blob welcome-blob-1" aria-hidden="true" />
+            <span className="welcome-blob welcome-blob-2" aria-hidden="true" />
+            <span className="welcome-blob welcome-blob-3" aria-hidden="true" />
             <div className="welcome-wave">👋</div>
             <h2 className="welcome-title">
                 {t.welcomeGreeting}{data.firstName ? `, ${data.firstName}` : ''}!
@@ -574,8 +577,8 @@ function SummaryStep({ summary, summaryVideos, t }) {
             </div>
 
             <div className="summary-carousel">
-                <div className="summary-carousel-card" key={current.key}>
-                    <div className="summary-carousel-icon">{current.icon}</div>
+                <div className={`summary-carousel-card tone-${current.key}`} key={current.key}>
+                    <div className={`summary-carousel-icon tone-${current.key}`}>{current.icon}</div>
                     <h4 className="summary-carousel-title">{summaryLabelMap[current.key]}</h4>
                     <p className="summary-carousel-text">{summary[current.key]}</p>
                     <SummaryVideoCard video={video} sectionKey={current.key} t={t} />
@@ -591,10 +594,10 @@ function SummaryStep({ summary, summaryVideos, t }) {
                     </button>
 
                     <div className="summary-carousel-dots">
-                        {availableSections.map((_, i) => (
+                        {availableSections.map((s, i) => (
                             <button
                                 key={i}
-                                className={`summary-carousel-dot ${i === cardIndex ? 'active' : ''}`}
+                                className={`summary-carousel-dot tone-${s.key} ${i === cardIndex ? 'active' : ''}`}
                                 onClick={() => setCardIndex(i)}
                                 aria-label={`Go to point ${i + 1}`}
                             />
@@ -653,15 +656,16 @@ function FAQTiles({ faqs, t, lang }) {
     return (
         <div>
             <div className="faq-tiles">
-                {displayFaqs.map((faq) => {
+                {displayFaqs.map((faq, i) => {
                     const qStr = faq.question[lang] || faq.question.en || faq.question;
                     const aStr = faq.answer[lang] || faq.answer.en || faq.answer;
                     const isOpen = openFaq === faq.id;
+                    const tone = ['teal', 'why', 'what', 'timeline', 'next'][i % 5];
 
                     return (
                         <button
                             key={faq.id}
-                            className={`faq-tile ${isOpen ? 'open' : ''}`}
+                            className={`faq-tile faq-tone-${tone} ${isOpen ? 'open' : ''}`}
                             onClick={() => setOpenFaq(isOpen ? null : faq.id)}
                         >
                             <span className="faq-tile-icon">💬</span>
